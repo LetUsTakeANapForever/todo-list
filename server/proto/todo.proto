@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option go_package = "/proto/gen";
+
+service TodoService {
+    rpc CreateTask (CreateTaskRequest) returns (CreateTaskResponse);
+    rpc GetTasks (GetTasksRequest) returns (GetTasksResponse);
+}
+
+message GetTasksResponse {
+    string status = 1;
+    repeated Task tasks = 2; // "repeated" means an array/slice in Go
+}
+
+message GetTasksRequest {
+    string userId = 1;
+}
+
+message Task {
+    string id = 1;
+    string userId = 2;
+    string title = 3;
+    string description = 4;
+    string priority = 5;
+    bool isComplete = 6;
+    string dueDate = 7;
+    string createdAt = 8;
+    string updatedAt = 9;
+}
+
+message CreateTaskRequest {
+    string userId = 1;
+    string title = 2;
+    string description = 3;
+    string priority = 4;
+    string dueDate = 6;
+}
+
+message CreateTaskResponse {
+    string status = 1;
+    string taskId = 2;
+}
