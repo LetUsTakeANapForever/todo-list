@@ -4,8 +4,9 @@ import (
 	"log"
 	"net"
 
+	chat "todo-server/internal/chat"
 	todo "todo-server/internal/todo"
-	todoPb "todo-server/proto/gen"
+	pb "todo-server/proto/gen"
 
 	"google.golang.org/grpc"
 )
@@ -19,7 +20,8 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	todoPb.RegisterTodoServiceServer(grpcServer, &todo.Server{})
+	pb.RegisterChatServer(grpcServer, &chat.Server{})
+	pb.RegisterTodoServiceServer(grpcServer, &todo.Server{})
 
 	err = grpcServer.Serve(lis)
 	if err != nil {

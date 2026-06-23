@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+option go_package = "/proto/gen";
+
+service TodoService {
+    rpc CreateTask (CreateTaskRequest) returns (CreateTaskResponse);
+    rpc GetTasks (GetTasksRequest) returns (GetTasksResponse);
+    rpc GetTaskById (GetTaskByIdRequest) returns (GetTaskByIdResponse);
+    rpc UpdateTask (UpdateTaskRequest) returns (UpdateTaskResponse);
+    rpc DeleteTask (DeleteTaskRequest) returns (DeleteTaskResponse);
+}
+
+message DeleteTaskResponse {
+    string status = 1;
+}
+
+message DeleteTaskRequest {
+    string taskId = 1;
+}
+
+message UpdateTaskResponse {
+    string status = 1;
+    Task task = 2;
+}
+
+message UpdateTaskRequest {
+    string taskId = 1;
+    string title = 2;
+    string description = 3;
+    string priority = 4;
+    string dueDate = 5;
+}
+
+message GetTaskByIdResponse {
+    string status = 1;
+    Task task = 2;
+}
+
+message GetTaskByIdRequest {
+    string taskId = 1;
+}
+
+message GetTasksResponse {
+    string status = 1;
+    repeated Task tasks = 2; // "repeated" means an array/slice in Go
+}
+
+message GetTasksRequest {
+    string userId = 1;
+}
+
+message Task {
+    string id = 1;
+    string userId = 2;
+    string title = 3;
+    string description = 4;
+    string priority = 5;
+    bool isComplete = 6;
+    string dueDate = 7;
+    string createdAt = 8;
+    string updatedAt = 9;
+}
+
+message CreateTaskRequest {
+    string userId = 1;
+    string title = 2;
+    string description = 3;
+    string priority = 4;
+    string dueDate = 5;
+}
+
+message CreateTaskResponse {
+    string status = 1;
+    string taskId = 2;
+}
