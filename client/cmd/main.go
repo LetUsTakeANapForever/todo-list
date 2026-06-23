@@ -33,8 +33,11 @@ func main() {
 
 	userID := uuid.New().String()
 	currentRoom := "lobby"
+	joinedRooms := map[string]struct{}{}
 
 	go recvLoop(stream)
+	// subscribe to lobby events
+	go recvLobby(client, ctx, userID)
 
 	scanner := bufio.NewScanner(os.Stdin)
 	printHelp()
@@ -74,6 +77,7 @@ func main() {
 				continue
 			}
 			fmt.Printf("%s: room %s\n", resp.GetMessage(), room)
+			joinedRooms[room] = struct{}{}
 			currentRoom = room
 			continue
 		}
@@ -85,7 +89,10 @@ func main() {
 				continue
 			}
 			fmt.Printf("%s: %s\n", resp.GetMessage(), room)
-			currentRoom = room
+			if resp.GetJoined() || resp.GetCreated() {
+				joinedRooms[room] = struct{}{}
+				currentRoom = room
+			}
 			continue
 		}
 		if strings.HasPrefix(line, "/leave ") {
@@ -96,10 +103,24 @@ func main() {
 				continue
 			}
 			fmt.Printf("%s: %s\n", resp.GetMessage(), room)
+			delete(joinedRooms, room)
+			if currentRoom == room {
+				currentRoom = "lobby"
+			}
 			continue
 		}
 		if strings.HasPrefix(line, "/room ") {
-			currentRoom = strings.TrimSpace(strings.TrimPrefix(line, "/room "))
+			room := strings.TrimSpace(strings.TrimPrefix(line, "/room "))
+			if room == "lobby" {
+				currentRoom = "lobby"
+				fmt.Println("current room set to lobby")
+				continue
+			}
+			if _, ok := joinedRooms[room]; !ok {
+				fmt.Printf("room %s is not joined; use /join or /create first\n", room)
+				continue
+			}
+			currentRoom = room
 			fmt.Printf("current room set to %s\n", currentRoom)
 			continue
 		}
@@ -107,6 +128,10 @@ func main() {
 			parts := strings.Fields(line)
 			if len(parts) < 3 {
 				fmt.Println("usage: /typing <room> <on|off>")
+				continue
+			}
+			if parts[1] == "lobby" {
+				fmt.Println("lobby is not a chat room")
 				continue
 			}
 			sendTyping(stream, userID, parts[1], parts[2] == "on")
@@ -119,6 +144,10 @@ func main() {
 				fmt.Println("usage: /msg [room] <text>")
 				continue
 			}
+			if room == "lobby" {
+				fmt.Println("join or create a room before sending messages")
+				continue
+			}
 			if err := sendMessage(stream, userID, room, text); err != nil {
 				log.Fatalf("send message failed: %v", err)
 			}
@@ -128,6 +157,10 @@ func main() {
 		room, text, ok := splitRoomMessage(line, currentRoom)
 		if !ok {
 			fmt.Println("usage: /msg [room] <text> or commands from /help")
+			continue
+		}
+		if room == "lobby" {
+			fmt.Println("join or create a room before sending messages")
 			continue
 		}
 		if err := sendMessage(stream, userID, room, text); err != nil {
@@ -179,6 +212,38 @@ func sendMessage(stream chatpb.Chat_ChatClient, userID, room, text string) error
 			},
 		},
 	})
+}
+
+func recvLobby(client chatpb.ChatClient, ctx context.Context, userID string) {
+	stream, err := client.Lobby(ctx, &chatpb.SubscribeLobbyRequest{UserId: userID})
+	if err != nil {
+		log.Printf("failed to subscribe to lobby: %v", err)
+		return
+	}
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Printf("lobby recv error: %v", err)
+			return
+		}
+		switch ev := resp.GetEvent().(type) {
+		case *chatpb.LobbyResponse_RoomList:
+			rl := ev.RoomList
+			fmt.Printf("\nLOBBY ROOMS: %v\n", rl.GetRoomIds())
+		case *chatpb.LobbyResponse_UserEvent:
+			u := ev.UserEvent
+			fmt.Printf("\nLOBBY USER EVENT: user=%s room=%s action=%s\n", u.GetUserId(), u.GetRoomId(), u.GetAction())
+		case *chatpb.LobbyResponse_SystemNotification:
+			sn := ev.SystemNotification
+			fmt.Printf("\nLOBBY SYSTEM: type=%s message=%s\n", sn.GetType(), sn.GetMessage())
+		default:
+			fmt.Println("\nunknown lobby event")
+		}
+		fmt.Print("> ")
+	}
 }
 
 func sendTyping(stream chatpb.Chat_ChatClient, userID, room string, isTyping bool) {

@@ -68,3 +68,32 @@ func TestAutoJoinOnStreamActivity(t *testing.T) {
 		t.Fatalf("unexpected joined rooms: %v", rooms)
 	}
 }
+
+func TestLobbyIsReserved(t *testing.T) {
+	resetHub()
+	srv := &Server{}
+
+	createResp, err := srv.CreateRoom(context.Background(), &chatPb.CreateRoomRequest{RoomId: "lobby", UserId: "u1"})
+	if err != nil {
+		t.Fatalf("CreateRoom error: %v", err)
+	}
+	if createResp.GetCreated() {
+		t.Fatalf("expected lobby create to be rejected")
+	}
+
+	joinResp, err := srv.JoinRoom(context.Background(), &chatPb.JoinRoomRequest{RoomId: "lobby", UserId: "u1"})
+	if err != nil {
+		t.Fatalf("JoinRoom error: %v", err)
+	}
+	if joinResp.GetJoined() {
+		t.Fatalf("expected lobby join to be rejected")
+	}
+
+	leaveResp, err := srv.LeaveRoom(context.Background(), &chatPb.LeaveRoomRequest{RoomId: "lobby", UserId: "u1"})
+	if err != nil {
+		t.Fatalf("LeaveRoom error: %v", err)
+	}
+	if leaveResp.GetLeft() {
+		t.Fatalf("expected lobby leave to be rejected")
+	}
+}

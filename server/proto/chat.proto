@@ -4,6 +4,8 @@ option go_package = "/proto/gen";
 
 service Chat {
     rpc Chat (stream ChatRequest) returns (stream ChatResponse);
+    // Lobby is a server-streaming RPC that emits lobby-level events (room list updates, user join/leave summaries, system notifications)
+    rpc Lobby (SubscribeLobbyRequest) returns (stream LobbyResponse);
     rpc CreateRoom (CreateRoomRequest) returns (RoomResponse);
     rpc JoinRoom (JoinRoomRequest) returns (RoomResponse);
     rpc LeaveRoom (LeaveRoomRequest) returns (RoomResponse);
@@ -85,4 +87,27 @@ message RoomResponse {
 
 message ListRoomsResponse {
     repeated string roomIds = 1;
+}
+
+// Lobby subscription and events
+message SubscribeLobbyRequest {
+    string userId = 1;
+}
+
+message LobbyResponse {
+    oneof event {
+        RoomList roomList = 1;
+        LobbyUserEvent userEvent = 2;
+        SystemNotification systemNotification = 3;
+    }
+}
+
+message RoomList {
+    repeated string roomIds = 1;
+}
+
+message LobbyUserEvent {
+    string userId = 1;
+    string roomId = 2;
+    string action = 3; // "joined" or "left"
 }

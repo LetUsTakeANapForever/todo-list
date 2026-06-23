@@ -823,6 +823,253 @@ func (x *ListRoomsResponse) GetRoomIds() []string {
 	return nil
 }
 
+// Lobby subscription and events
+type SubscribeLobbyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeLobbyRequest) Reset() {
+	*x = SubscribeLobbyRequest{}
+	mi := &file_chat_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeLobbyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeLobbyRequest) ProtoMessage() {}
+
+func (x *SubscribeLobbyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeLobbyRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeLobbyRequest) Descriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SubscribeLobbyRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type LobbyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*LobbyResponse_RoomList
+	//	*LobbyResponse_UserEvent
+	//	*LobbyResponse_SystemNotification
+	Event         isLobbyResponse_Event `protobuf_oneof:"event"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LobbyResponse) Reset() {
+	*x = LobbyResponse{}
+	mi := &file_chat_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LobbyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LobbyResponse) ProtoMessage() {}
+
+func (x *LobbyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LobbyResponse.ProtoReflect.Descriptor instead.
+func (*LobbyResponse) Descriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *LobbyResponse) GetEvent() isLobbyResponse_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *LobbyResponse) GetRoomList() *RoomList {
+	if x != nil {
+		if x, ok := x.Event.(*LobbyResponse_RoomList); ok {
+			return x.RoomList
+		}
+	}
+	return nil
+}
+
+func (x *LobbyResponse) GetUserEvent() *LobbyUserEvent {
+	if x != nil {
+		if x, ok := x.Event.(*LobbyResponse_UserEvent); ok {
+			return x.UserEvent
+		}
+	}
+	return nil
+}
+
+func (x *LobbyResponse) GetSystemNotification() *SystemNotification {
+	if x != nil {
+		if x, ok := x.Event.(*LobbyResponse_SystemNotification); ok {
+			return x.SystemNotification
+		}
+	}
+	return nil
+}
+
+type isLobbyResponse_Event interface {
+	isLobbyResponse_Event()
+}
+
+type LobbyResponse_RoomList struct {
+	RoomList *RoomList `protobuf:"bytes,1,opt,name=roomList,proto3,oneof"`
+}
+
+type LobbyResponse_UserEvent struct {
+	UserEvent *LobbyUserEvent `protobuf:"bytes,2,opt,name=userEvent,proto3,oneof"`
+}
+
+type LobbyResponse_SystemNotification struct {
+	SystemNotification *SystemNotification `protobuf:"bytes,3,opt,name=systemNotification,proto3,oneof"`
+}
+
+func (*LobbyResponse_RoomList) isLobbyResponse_Event() {}
+
+func (*LobbyResponse_UserEvent) isLobbyResponse_Event() {}
+
+func (*LobbyResponse_SystemNotification) isLobbyResponse_Event() {}
+
+type RoomList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomIds       []string               `protobuf:"bytes,1,rep,name=roomIds,proto3" json:"roomIds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoomList) Reset() {
+	*x = RoomList{}
+	mi := &file_chat_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoomList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomList) ProtoMessage() {}
+
+func (x *RoomList) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomList.ProtoReflect.Descriptor instead.
+func (*RoomList) Descriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *RoomList) GetRoomIds() []string {
+	if x != nil {
+		return x.RoomIds
+	}
+	return nil
+}
+
+type LobbyUserEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=userId,proto3" json:"userId,omitempty"`
+	RoomId        string                 `protobuf:"bytes,2,opt,name=roomId,proto3" json:"roomId,omitempty"`
+	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"` // "joined" or "left"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LobbyUserEvent) Reset() {
+	*x = LobbyUserEvent{}
+	mi := &file_chat_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LobbyUserEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LobbyUserEvent) ProtoMessage() {}
+
+func (x *LobbyUserEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_chat_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LobbyUserEvent.ProtoReflect.Descriptor instead.
+func (*LobbyUserEvent) Descriptor() ([]byte, []int) {
+	return file_chat_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *LobbyUserEvent) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *LobbyUserEvent) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *LobbyUserEvent) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
 var File_chat_proto protoreflect.FileDescriptor
 
 const file_chat_proto_rawDesc = "" +
@@ -880,9 +1127,23 @@ const file_chat_proto_rawDesc = "" +
 	"\x04left\x18\x04 \x01(\bR\x04left\x12\x18\n" +
 	"\amessage\x18\x05 \x01(\tR\amessage\"-\n" +
 	"\x11ListRoomsResponse\x12\x18\n" +
-	"\aroomIds\x18\x01 \x03(\tR\aroomIds2\xf0\x01\n" +
+	"\aroomIds\x18\x01 \x03(\tR\aroomIds\"/\n" +
+	"\x15SubscribeLobbyRequest\x12\x16\n" +
+	"\x06userId\x18\x01 \x01(\tR\x06userId\"\xb9\x01\n" +
+	"\rLobbyResponse\x12'\n" +
+	"\broomList\x18\x01 \x01(\v2\t.RoomListH\x00R\broomList\x12/\n" +
+	"\tuserEvent\x18\x02 \x01(\v2\x0f.LobbyUserEventH\x00R\tuserEvent\x12E\n" +
+	"\x12systemNotification\x18\x03 \x01(\v2\x13.SystemNotificationH\x00R\x12systemNotificationB\a\n" +
+	"\x05event\"$\n" +
+	"\bRoomList\x12\x18\n" +
+	"\aroomIds\x18\x01 \x03(\tR\aroomIds\"X\n" +
+	"\x0eLobbyUserEvent\x12\x16\n" +
+	"\x06userId\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06roomId\x18\x02 \x01(\tR\x06roomId\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action2\xa3\x02\n" +
 	"\x04Chat\x12'\n" +
-	"\x04Chat\x12\f.ChatRequest\x1a\r.ChatResponse(\x010\x01\x12/\n" +
+	"\x04Chat\x12\f.ChatRequest\x1a\r.ChatResponse(\x010\x01\x121\n" +
+	"\x05Lobby\x12\x16.SubscribeLobbyRequest\x1a\x0e.LobbyResponse0\x01\x12/\n" +
 	"\n" +
 	"CreateRoom\x12\x12.CreateRoomRequest\x1a\r.RoomResponse\x12+\n" +
 	"\bJoinRoom\x12\x10.JoinRoomRequest\x1a\r.RoomResponse\x12-\n" +
@@ -902,21 +1163,25 @@ func file_chat_proto_rawDescGZIP() []byte {
 	return file_chat_proto_rawDescData
 }
 
-var file_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_chat_proto_goTypes = []any{
-	(*ChatResponse)(nil),       // 0: ChatResponse
-	(*NewMessageEvent)(nil),    // 1: NewMessageEvent
-	(*UserTypingEvent)(nil),    // 2: UserTypingEvent
-	(*SystemNotification)(nil), // 3: SystemNotification
-	(*ChatRequest)(nil),        // 4: ChatRequest
-	(*SendMessageRequest)(nil), // 5: SendMessageRequest
-	(*TypingRequest)(nil),      // 6: TypingRequest
-	(*CreateRoomRequest)(nil),  // 7: CreateRoomRequest
-	(*JoinRoomRequest)(nil),    // 8: JoinRoomRequest
-	(*LeaveRoomRequest)(nil),   // 9: LeaveRoomRequest
-	(*ListRoomsRequest)(nil),   // 10: ListRoomsRequest
-	(*RoomResponse)(nil),       // 11: RoomResponse
-	(*ListRoomsResponse)(nil),  // 12: ListRoomsResponse
+	(*ChatResponse)(nil),          // 0: ChatResponse
+	(*NewMessageEvent)(nil),       // 1: NewMessageEvent
+	(*UserTypingEvent)(nil),       // 2: UserTypingEvent
+	(*SystemNotification)(nil),    // 3: SystemNotification
+	(*ChatRequest)(nil),           // 4: ChatRequest
+	(*SendMessageRequest)(nil),    // 5: SendMessageRequest
+	(*TypingRequest)(nil),         // 6: TypingRequest
+	(*CreateRoomRequest)(nil),     // 7: CreateRoomRequest
+	(*JoinRoomRequest)(nil),       // 8: JoinRoomRequest
+	(*LeaveRoomRequest)(nil),      // 9: LeaveRoomRequest
+	(*ListRoomsRequest)(nil),      // 10: ListRoomsRequest
+	(*RoomResponse)(nil),          // 11: RoomResponse
+	(*ListRoomsResponse)(nil),     // 12: ListRoomsResponse
+	(*SubscribeLobbyRequest)(nil), // 13: SubscribeLobbyRequest
+	(*LobbyResponse)(nil),         // 14: LobbyResponse
+	(*RoomList)(nil),              // 15: RoomList
+	(*LobbyUserEvent)(nil),        // 16: LobbyUserEvent
 }
 var file_chat_proto_depIdxs = []int32{
 	1,  // 0: ChatResponse.newMessage:type_name -> NewMessageEvent
@@ -924,21 +1189,26 @@ var file_chat_proto_depIdxs = []int32{
 	3,  // 2: ChatResponse.systemNotification:type_name -> SystemNotification
 	5,  // 3: ChatRequest.sendMessage:type_name -> SendMessageRequest
 	6,  // 4: ChatRequest.typingStatus:type_name -> TypingRequest
-	4,  // 5: Chat.Chat:input_type -> ChatRequest
-	7,  // 6: Chat.CreateRoom:input_type -> CreateRoomRequest
-	8,  // 7: Chat.JoinRoom:input_type -> JoinRoomRequest
-	9,  // 8: Chat.LeaveRoom:input_type -> LeaveRoomRequest
-	10, // 9: Chat.ListRooms:input_type -> ListRoomsRequest
-	0,  // 10: Chat.Chat:output_type -> ChatResponse
-	11, // 11: Chat.CreateRoom:output_type -> RoomResponse
-	11, // 12: Chat.JoinRoom:output_type -> RoomResponse
-	11, // 13: Chat.LeaveRoom:output_type -> RoomResponse
-	12, // 14: Chat.ListRooms:output_type -> ListRoomsResponse
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	15, // 5: LobbyResponse.roomList:type_name -> RoomList
+	16, // 6: LobbyResponse.userEvent:type_name -> LobbyUserEvent
+	3,  // 7: LobbyResponse.systemNotification:type_name -> SystemNotification
+	4,  // 8: Chat.Chat:input_type -> ChatRequest
+	13, // 9: Chat.Lobby:input_type -> SubscribeLobbyRequest
+	7,  // 10: Chat.CreateRoom:input_type -> CreateRoomRequest
+	8,  // 11: Chat.JoinRoom:input_type -> JoinRoomRequest
+	9,  // 12: Chat.LeaveRoom:input_type -> LeaveRoomRequest
+	10, // 13: Chat.ListRooms:input_type -> ListRoomsRequest
+	0,  // 14: Chat.Chat:output_type -> ChatResponse
+	14, // 15: Chat.Lobby:output_type -> LobbyResponse
+	11, // 16: Chat.CreateRoom:output_type -> RoomResponse
+	11, // 17: Chat.JoinRoom:output_type -> RoomResponse
+	11, // 18: Chat.LeaveRoom:output_type -> RoomResponse
+	12, // 19: Chat.ListRooms:output_type -> ListRoomsResponse
+	14, // [14:20] is the sub-list for method output_type
+	8,  // [8:14] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_chat_proto_init() }
@@ -955,13 +1225,18 @@ func file_chat_proto_init() {
 		(*ChatRequest_SendMessage)(nil),
 		(*ChatRequest_TypingStatus)(nil),
 	}
+	file_chat_proto_msgTypes[14].OneofWrappers = []any{
+		(*LobbyResponse_RoomList)(nil),
+		(*LobbyResponse_UserEvent)(nil),
+		(*LobbyResponse_SystemNotification)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chat_proto_rawDesc), len(file_chat_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

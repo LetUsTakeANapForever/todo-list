@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Chat_Chat_FullMethodName       = "/Chat/Chat"
+	Chat_Lobby_FullMethodName      = "/Chat/Lobby"
 	Chat_CreateRoom_FullMethodName = "/Chat/CreateRoom"
 	Chat_JoinRoom_FullMethodName   = "/Chat/JoinRoom"
 	Chat_LeaveRoom_FullMethodName  = "/Chat/LeaveRoom"
@@ -31,6 +32,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatClient interface {
 	Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatRequest, ChatResponse], error)
+	// Lobby is a server-streaming RPC that emits lobby-level events (room list updates, user join/leave summaries, system notifications)
+	Lobby(ctx context.Context, in *SubscribeLobbyRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LobbyResponse], error)
 	CreateRoom(ctx context.Context, in *CreateRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
 	JoinRoom(ctx context.Context, in *JoinRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
 	LeaveRoom(ctx context.Context, in *LeaveRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
@@ -57,6 +60,25 @@ func (c *chatClient) Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.Bi
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Chat_ChatClient = grpc.BidiStreamingClient[ChatRequest, ChatResponse]
+
+func (c *chatClient) Lobby(ctx context.Context, in *SubscribeLobbyRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LobbyResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Chat_ServiceDesc.Streams[1], Chat_Lobby_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeLobbyRequest, LobbyResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Chat_LobbyClient = grpc.ServerStreamingClient[LobbyResponse]
 
 func (c *chatClient) CreateRoom(ctx context.Context, in *CreateRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -103,6 +125,8 @@ func (c *chatClient) ListRooms(ctx context.Context, in *ListRoomsRequest, opts .
 // for forward compatibility.
 type ChatServer interface {
 	Chat(grpc.BidiStreamingServer[ChatRequest, ChatResponse]) error
+	// Lobby is a server-streaming RPC that emits lobby-level events (room list updates, user join/leave summaries, system notifications)
+	Lobby(*SubscribeLobbyRequest, grpc.ServerStreamingServer[LobbyResponse]) error
 	CreateRoom(context.Context, *CreateRoomRequest) (*RoomResponse, error)
 	JoinRoom(context.Context, *JoinRoomRequest) (*RoomResponse, error)
 	LeaveRoom(context.Context, *LeaveRoomRequest) (*RoomResponse, error)
@@ -119,6 +143,9 @@ type UnimplementedChatServer struct{}
 
 func (UnimplementedChatServer) Chat(grpc.BidiStreamingServer[ChatRequest, ChatResponse]) error {
 	return status.Error(codes.Unimplemented, "method Chat not implemented")
+}
+func (UnimplementedChatServer) Lobby(*SubscribeLobbyRequest, grpc.ServerStreamingServer[LobbyResponse]) error {
+	return status.Error(codes.Unimplemented, "method Lobby not implemented")
 }
 func (UnimplementedChatServer) CreateRoom(context.Context, *CreateRoomRequest) (*RoomResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateRoom not implemented")
@@ -159,6 +186,17 @@ func _Chat_Chat_Handler(srv interface{}, stream grpc.ServerStream) error {
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Chat_ChatServer = grpc.BidiStreamingServer[ChatRequest, ChatResponse]
+
+func _Chat_Lobby_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeLobbyRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServer).Lobby(m, &grpc.GenericServerStream[SubscribeLobbyRequest, LobbyResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Chat_LobbyServer = grpc.ServerStreamingServer[LobbyResponse]
 
 func _Chat_CreateRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateRoomRequest)
@@ -262,6 +300,11 @@ var Chat_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _Chat_Chat_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "Lobby",
+			Handler:       _Chat_Lobby_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "chat.proto",

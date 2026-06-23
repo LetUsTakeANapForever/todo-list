@@ -10,6 +10,7 @@ import (
 )
 
 const roomHistoryLimit = 50
+const lobbyRoomName = "lobby"
 
 // Client represents a connected bidi-stream participant
 type Client struct {
@@ -26,14 +27,49 @@ type roomState struct {
 
 // Hub keeps track of clients per room and broadcasts events
 type Hub struct {
-	mu    sync.RWMutex
-	rooms map[string]*roomState
-	users map[string]map[string]struct{}
+	mu        sync.RWMutex
+	rooms     map[string]*roomState
+	users     map[string]map[string]struct{}
+	lobbySubs map[chan *chatPb.LobbyResponse]struct{}
 }
 
 var globalHub = &Hub{
-	rooms: make(map[string]*roomState),
-	users: make(map[string]map[string]struct{}),
+	rooms:     make(map[string]*roomState),
+	users:     make(map[string]map[string]struct{}),
+	lobbySubs: make(map[chan *chatPb.LobbyResponse]struct{}),
+}
+
+func (h *Hub) addLobbySubscriber(ch chan *chatPb.LobbyResponse) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.lobbySubs == nil {
+		h.lobbySubs = make(map[chan *chatPb.LobbyResponse]struct{})
+	}
+	h.lobbySubs[ch] = struct{}{}
+}
+
+func (h *Hub) removeLobbySubscriber(ch chan *chatPb.LobbyResponse) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.lobbySubs, ch)
+}
+
+func (h *Hub) broadcastLobby(resp *chatPb.LobbyResponse) {
+	if resp == nil {
+		return
+	}
+	h.mu.RLock()
+	subs := make([]chan *chatPb.LobbyResponse, 0, len(h.lobbySubs))
+	for ch := range h.lobbySubs {
+		subs = append(subs, ch)
+	}
+	h.mu.RUnlock()
+	for _, ch := range subs {
+		select {
+		case ch <- resp:
+		default:
+		}
+	}
 }
 
 func (h *Hub) addClientToRoom(room string, c *Client) (joined bool) {
@@ -248,15 +284,27 @@ func roomResponse(room string, created, joined, left bool, message string) *chat
 }
 
 func (s *Server) CreateRoom(ctx context.Context, req *chatPb.CreateRoomRequest) (*chatPb.RoomResponse, error) {
+	if req.GetRoomId() == lobbyRoomName {
+		return roomResponse(req.GetRoomId(), false, false, false, "lobby is reserved"), nil
+	}
 	created := globalHub.ensureRoom(req.GetRoomId())
 	message := "room already exists"
 	if created {
 		message = "room created"
+		// notify lobby subscribers of new room list
+		globalHub.broadcastLobby(&chatPb.LobbyResponse{
+			Event: &chatPb.LobbyResponse_RoomList{
+				RoomList: &chatPb.RoomList{RoomIds: globalHub.roomNames()},
+			},
+		})
 	}
 	return roomResponse(req.GetRoomId(), created, false, false, message), nil
 }
 
 func (s *Server) JoinRoom(ctx context.Context, req *chatPb.JoinRoomRequest) (*chatPb.RoomResponse, error) {
+	if req.GetRoomId() == lobbyRoomName {
+		return roomResponse(req.GetRoomId(), false, false, false, "lobby is reserved"), nil
+	}
 	created := globalHub.ensureRoom(req.GetRoomId())
 	joined := globalHub.addUserToRoom(req.GetRoomId(), req.GetUserId())
 	message := "joined room"
@@ -266,16 +314,75 @@ func (s *Server) JoinRoom(ctx context.Context, req *chatPb.JoinRoomRequest) (*ch
 	if created {
 		message = "room created and joined"
 	}
+	// notify lobby subscribers that a user joined this room
+	if joined {
+		globalHub.broadcastLobby(&chatPb.LobbyResponse{
+			Event: &chatPb.LobbyResponse_UserEvent{
+				UserEvent: &chatPb.LobbyUserEvent{
+					UserId: req.GetUserId(),
+					RoomId: req.GetRoomId(),
+					Action: "joined",
+				},
+			},
+		})
+	}
 	return roomResponse(req.GetRoomId(), created, joined, false, message), nil
 }
 
 func (s *Server) LeaveRoom(ctx context.Context, req *chatPb.LeaveRoomRequest) (*chatPb.RoomResponse, error) {
+	if req.GetRoomId() == lobbyRoomName {
+		return roomResponse(req.GetRoomId(), false, false, false, "lobby is reserved"), nil
+	}
 	left := globalHub.removeUserFromRoom(req.GetRoomId(), req.GetUserId())
+	if left {
+		globalHub.broadcastLobby(&chatPb.LobbyResponse{
+			Event: &chatPb.LobbyResponse_UserEvent{
+				UserEvent: &chatPb.LobbyUserEvent{
+					UserId: req.GetUserId(),
+					RoomId: req.GetRoomId(),
+					Action: "left",
+				},
+			},
+		})
+	}
 	return roomResponse(req.GetRoomId(), false, false, left, "left room"), nil
 }
 
 func (s *Server) ListRooms(ctx context.Context, req *chatPb.ListRoomsRequest) (*chatPb.ListRoomsResponse, error) {
 	return &chatPb.ListRoomsResponse{RoomIds: globalHub.roomNames()}, nil
+}
+
+// Lobby is a server-streaming RPC that sends lobby-level events (room list, user join/leave, system notifications)
+func (s *Server) Lobby(req *chatPb.SubscribeLobbyRequest, stream chatPb.Chat_LobbyServer) error {
+	ctx := stream.Context()
+	ch := make(chan *chatPb.LobbyResponse, 8)
+	globalHub.addLobbySubscriber(ch)
+	defer func() {
+		globalHub.removeLobbySubscriber(ch)
+		close(ch)
+	}()
+
+	// send initial room list immediately
+	initMsg := &chatPb.LobbyResponse{
+		Event: &chatPb.LobbyResponse_RoomList{RoomList: &chatPb.RoomList{RoomIds: globalHub.roomNames()}},
+	}
+	if err := stream.Send(initMsg); err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case msg, ok := <-ch:
+			if !ok {
+				return nil
+			}
+			if err := stream.Send(msg); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func (s *Server) Chat(stream chatPb.Chat_ChatServer) error {
@@ -336,6 +443,9 @@ func (s *Server) Chat(stream chatPb.Chat_ChatServer) error {
 			if sendMessage == nil {
 				continue
 			}
+			if sendMessage.GetRoomId() == "" || sendMessage.GetRoomId() == lobbyRoomName {
+				continue
+			}
 			// Register client to room so they receive future broadcasts.
 			if globalHub.addClientToRoom(sendMessage.GetRoomId(), c) {
 				globalHub.broadcast(sendMessage.GetRoomId(), systemNotification(
@@ -370,6 +480,9 @@ func (s *Server) Chat(stream chatPb.Chat_ChatServer) error {
 		case *chatPb.ChatRequest_TypingStatus:
 			tr := p.TypingStatus
 			if tr == nil {
+				continue
+			}
+			if tr.GetRoomId() == "" || tr.GetRoomId() == lobbyRoomName {
 				continue
 			}
 			if globalHub.addClientToRoom(tr.GetRoomId(), c) {
