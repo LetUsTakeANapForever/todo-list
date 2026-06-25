@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl bg-white rounded-lg shadow-md overflow-hidden flex flex-col" style="height:80vh;">
+        <header class="flex items-center justify-between px-4 py-3 border-b">
+            <h2 class="text-lg font-medium">Chat</h2>
+        </header>
+
+        <main id="chat-container" class="flex-1 overflow-auto p-4 space-y-4 bg-gray-50">
+            <div id="messages" class="space-y-3">
+                <!-- messages render here -->
+            </div>
+            <div id="empty" class="text-center text-gray-400">No messages yet</div>
+        </main>
+
+        <footer class="px-4 py-3 border-t bg-white">
+            <form id="chat-form" class="flex items-center space-x-3">
+                <input id="input" type="text" autocomplete="off" placeholder="Type a message..."
+                    class="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button id="send" type="submit"
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Send</button>
+                <button id="clear" type="button" class="px-3 py-2 text-sm text-red-600">Clear</button>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'chat:v1';
+
+        function loadMessages() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { console.error(e); return []; }
+        }
+
+        function saveMessages(messages) { localStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); }
+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+        function render() {
+            const messages = loadMessages();
+            const container = document.getElementById('messages');
+            const empty = document.getElementById('empty');
+            container.innerHTML = '';
+            if (messages.length === 0) { empty.style.display = 'block'; }
+            else { empty.style.display = 'none'; }
+            messages.forEach(m => {
+                const wrap = document.createElement('div');
+                wrap.className = (m.role === 'user') ? 'flex justify-end' : 'flex justify-start';
+
+                const bubble = document.createElement('div');
+                bubble.className = (m.role === 'user')
+                    ? 'max-w-3/4 bg-indigo-600 text-white px-4 py-2 rounded-lg rounded-br-none'
+                    : 'max-w-3/4 bg-white text-gray-800 px-4 py-2 rounded-lg rounded-bl-none border';
+
+                const meta = document.createElement('div');
+                meta.className = 'text-xs text-gray-400 mb-1';
+                meta.textContent = m.role + (m.sentAt ? ' • ' + new Date(m.sentAt).toLocaleTimeString() : '');
+
+                const text = document.createElement('div');
+                text.className = 'whitespace-pre-wrap';
+                text.textContent = m.text;
+
+                bubble.appendChild(meta);
+                bubble.appendChild(text);
+                wrap.appendChild(bubble);
+                container.appendChild(wrap);
+            });
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addMessage(role, text) {
+            const messages = loadMessages();
+            const m = { id: uid(), role, text, sentAt: new Date().toISOString() };
+            messages.push(m);
+            saveMessages(messages);
+            render();
+            return m;
+        }
+
+        async function sendToServer(message) {
+            // Placeholder: integrate with backend (WebSocket / HTTP bridge to gRPC)
+            // Simulate bot reply for demo purposes
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve({ role: 'bot', text: 'Echo: ' + message.text });
+                }, 600);
+            });
+        }
+
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            if (!text) return;
+            const userMsg = addMessage('user', text);
+            input.value = '';
+            try {
+                const reply = await sendToServer(userMsg);
+                addMessage(reply.role || 'bot', reply.text || '');
+            } catch (err) {
+                console.error('send error', err);
+                addMessage('bot', 'Failed to send message');
+            }
+        });
+
+        document.getElementById('clear').addEventListener('click', () => {
+            if (!confirm('Clear all messages?')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            render();
+        });
+
+        // initial render
+        render();
+    </script>
+</body>
+
+</html>

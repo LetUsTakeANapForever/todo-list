@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-do List</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-2xl bg-white rounded-lg shadow-md p-6">
+        <header class="flex items-center justify-between mb-4">
+            <h1 class="text-2xl font-semibold">To‑do List</h1>
+        </header>
+
+        <form id="todo-form" class="grid grid-cols-12 gap-3 items-end mb-6">
+            <div class="col-span-6">
+                <label class="block text-sm text-gray-700">Title</label>
+                <input id="title" name="title" type="text"
+                    class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Buy milk" required />
+            </div>
+            <div class="col-span-3">
+                <label class="block text-sm text-gray-700">Priority</label>
+                <select id="priority" name="priority"
+                    class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="col-span-3">
+                <label class="block text-sm text-gray-700">Due</label>
+                <input id="dueDate" name="dueDate" type="date"
+                    class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="col-span-12">
+                <label class="block text-sm text-gray-700">Description (optional)</label>
+                <textarea id="description" rows="2"
+                    class="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Notes about the task..."></textarea>
+            </div>
+            <div class="col-span-12 text-right">
+                <button id="add-btn" type="submit"
+                    class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Add
+                    task</button>
+            </div>
+        </form>
+
+        <div class="flex items-center justify-between mb-4">
+            <div class="text-sm text-gray-600" id="stats">0 tasks</div>
+            <div class="space-x-2">
+                <button id="clear-completed" class="text-sm text-gray-600 hover:underline">Clear completed</button>
+                <button id="refresh-list" class="text-sm text-gray-600 hover:underline">Refresh</button>
+            </div>
+        </div>
+
+        <ul id="todo-list" class="space-y-2">
+        </ul>
+
+        <div id="empty" class="text-center text-gray-400 mt-6">No tasks yet</div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'todos:v1';
+
+        function uid() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        function loadTodos() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                console.error('failed to load todos', e);
+                return [];
+            }
+        }
+
+        function saveTodos(todos) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+        }
+
+        function formatDue(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                return d.toLocaleDateString();
+            } catch (e) { return dateStr; }
+        }
+
+        function render() {
+            const list = document.getElementById('todo-list');
+            const empty = document.getElementById('empty');
+            const stats = document.getElementById('stats');
+            const todos = loadTodos();
+
+            list.innerHTML = '';
+            if (todos.length === 0) {
+                empty.style.display = 'block';
+            } else {
+                empty.style.display = 'none';
+            }
+
+            let completed = 0;
+            todos.sort((a, b) => (a.isComplete - b.isComplete) || new Date(a.createdAt) - new Date(b.createdAt));
+
+            todos.forEach(t => {
+                if (t.isComplete) completed++;
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-gray-50 rounded-md flex items-start justify-between';
+
+                const left = document.createElement('div');
+                left.className = 'flex items-start space-x-3';
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = !!t.isComplete;
+                cb.className = 'mt-1';
+                cb.addEventListener('change', () => toggleComplete(t.id, cb.checked));
+
+                const meta = document.createElement('div');
+                const title = document.createElement('div');
+                title.className = 'font-medium';
+                title.textContent = t.title;
+                if (t.isComplete) title.classList.add('line-through', 'text-gray-500');
+
+                const small = document.createElement('div');
+                small.className = 'text-xs text-gray-500';
+                small.textContent = [t.priority ? ('Priority: ' + t.priority) : '', t.dueDate ? ('Due: ' + formatDue(t.dueDate)) : '']
+                    .filter(Boolean).join(' • ');
+
+                const desc = document.createElement('div');
+                desc.className = 'text-sm text-gray-700 mt-1';
+                desc.textContent = t.description || '';
+                if (!desc.textContent) desc.style.display = 'none';
+
+                meta.appendChild(title);
+                meta.appendChild(small);
+                meta.appendChild(desc);
+
+                left.appendChild(cb);
+                left.appendChild(meta);
+
+                const actions = document.createElement('div');
+                actions.className = 'flex items-center space-x-2';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'text-sm text-indigo-600 hover:underline';
+                editBtn.textContent = 'Edit';
+                editBtn.addEventListener('click', () => editTodo(t.id));
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-sm text-red-600 hover:underline';
+                delBtn.textContent = 'Delete';
+                delBtn.addEventListener('click', () => deleteTodo(t.id));
+
+                actions.appendChild(editBtn);
+                actions.appendChild(delBtn);
+
+                li.appendChild(left);
+                li.appendChild(actions);
+                list.appendChild(li);
+            });
+
+            stats.textContent = `${todos.length} task(s)` + (completed ? ` — ${completed} done` : '');
+        }
+
+        function addTodoFromForm(e) {
+            e.preventDefault();
+            const title = document.getElementById('title').value.trim();
+            if (!title) return alert('Title required');
+            const description = document.getElementById('description').value.trim();
+            const priority = document.getElementById('priority').value;
+            const dueDate = document.getElementById('dueDate').value;
+            const todos = loadTodos();
+            const item = {
+                id: uid(),
+                title,
+                description,
+                priority,
+                dueDate: dueDate || null,
+                isComplete: false,
+                createdAt: new Date().toISOString(),
+            };
+            todos.push(item);
+            saveTodos(todos);
+            render();
+            document.getElementById('todo-form').reset();
+            // Todo: sync with server if API is available
+            // fetchToServer('create', item).catch(()=>{});
+        }
+
+        function toggleComplete(id, isComplete) {
+            const todos = loadTodos();
+            const idx = todos.findIndex(t => t.id === id);
+            if (idx === -1) return;
+            todos[idx].isComplete = !!isComplete;
+            todos[idx].updatedAt = new Date().toISOString();
+            saveTodos(todos);
+            render();
+            // fetchToServer('update', todos[idx]).catch(()=>{});
+        }
+
+        function editTodo(id) {
+            const todos = loadTodos();
+            const t = todos.find(x => x.id === id);
+            if (!t) return;
+            const newTitle = prompt('Title', t.title);
+            if (newTitle === null) return; // cancelled
+            const newDesc = prompt('Description', t.description || '');
+            if (newDesc === null) return;
+            t.title = newTitle.trim() || t.title;
+            t.description = newDesc.trim();
+            t.updatedAt = new Date().toISOString();
+            saveTodos(todos);
+            render();
+            // fetchToServer('update', t).catch(()=>{});
+        }
+
+        function deleteTodo(id) {
+            if (!confirm('Delete this task?')) return;
+            let todos = loadTodos();
+            todos = todos.filter(t => t.id !== id);
+            saveTodos(todos);
+            render();
+            // fetchToServer('delete', {id}).catch(()=>{});
+        }
+
+        function clearCompleted() {
+            if (!confirm('Remove all completed tasks?')) return;
+            let todos = loadTodos();
+            todos = todos.filter(t => !t.isComplete);
+            saveTodos(todos);
+            render();
+        }
+
+        function refreshList() { render(); }
+
+        async function fetchToServer(action, payload) {
+            return Promise.resolve();
+        }
+
+        document.getElementById('todo-form').addEventListener('submit', addTodoFromForm);
+        document.getElementById('clear-completed').addEventListener('click', clearCompleted);
+        document.getElementById('refresh-list').addEventListener('click', refreshList);
+
+        render();
+    </script>
+</body>
+
+</html>
